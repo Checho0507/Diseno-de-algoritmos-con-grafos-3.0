@@ -1,33 +1,36 @@
 import streamlit as st
+import random
 import string
 import json
+
 from backend.generators.json_elements import *
 from streamlit_react_flow import react_flow
 from documents.saved import *
 
 elementos = []
-created = False
 
-class Elements:
+class Grafo:
 
+    def __init__(self):
+        global elementos
+        self.elementos = elementos
 
-    def get_elements():
+    def get_elements(self):
         global elementos
         return elementos
 
-    def set_elements(elements):
+    def set_elements(self, elements):
         global elementos
         elementos = elements
+        self.elementos = elements
 
-    def get_created():
-        global created
-        return created
+    def add_nodes_random(self,num_nodes):
+        for i in range(num_nodes):
+            label = ''.join(random.choices(string.ascii_uppercase, k=3))
+            change = self.add_node(self.get_elements(), i, label)
+            self.set_elements(change)
 
-    def set_created(c):
-        global created
-        created = c
-
-    def find_index_node_by_label(label, elements):
+    def find_index_node_by_label(self, label, elements):
         create_elements_from_list(elements)
         for i, element in enumerate(elements):  # Utiliza enumerate para obtener tanto el índice como el elemento
             if 'data' in element and 'label' in element['data']:
@@ -35,42 +38,6 @@ class Elements:
                     node_found = i
                     return node_found
         return -1
-
-    def generate_numeric_guid(counter):
-        counter += 1
-        return counter
-
-    def show_node_coordinates(graph_data):
-        # Función para actualizar las coordenadas de los nodos en tiempo real
-        def update_coordinates(event):
-            if event["core_as_json"]:
-                st.write("Coordenadas actualizadas en tiempo real:")
-                for node in event["core_as_json"]["elements"]["nodes"]:
-                    node_id = node["data"]["id"]
-                    node_position = node["position"]
-                    st.write(f"Nodo {node_id}: ({node_position['x']}, {node_position['y']})")
-
-    def find_element(lista, elemento):
-        """
-        Encuentra la primera aparición del elemento en la lista.
-
-        Args:
-        lista (list): La lista en la que se busca el elemento.
-        elemento: El elemento que se desea encontrar en la lista.
-
-        Returns:
-        int: El índice de la primera aparición del elemento en la lista.
-             Retorna -1 si el elemento no se encuentra en la lista.
-        """
-        try:
-            indice = lista.index(elemento)
-            return indice
-        except ValueError:
-            return -1
-    # Otras funciones de la clase
-
-    # Pila para almacenar los cambios realizados
-    cambios_realizados = []
 
     @staticmethod
     def add_node(graph, node_id, node_label):
@@ -82,12 +49,23 @@ class Elements:
                       "text-shadow": "4px 4px 2px rgba(0,0,0,0.3)",
                       "font-size": "30px", "border-radius": "50%"},
             "data": {"label": node_label},
-            "position": {"x": 0, "y": 0}
+            "position": {"x": random.randint(100,400), "y": random.randint(100,200)},
+            "linkedTo": []
         }
         graph.append(new_node)
 
-        # Guardar el cambio realizado en la pila
-        Elements.cambios_realizados.append(("add_node", (node_id, node_label)))
+        return graph
+
+    @staticmethod
+    def add_edge(graph, elemento_origen, elemento_destino, animated, peso):
+        graph.append({'id': f'edge-{elemento_origen["id"]}-{elemento_destino["id"]}',
+                         'source': f'{elemento_origen["id"]}', 'target': f'{elemento_destino["id"]}',
+                         'animated': animated})
+        if animated:
+            for element in graph:
+                if str(element["id"]) == str(elemento_origen["id"]):
+                    element["linkedTo"].append({'nodeId': f'{(elemento_destino["id"])}', 'weight': f'{peso}'})
+
         return graph
 
     @staticmethod
@@ -95,8 +73,6 @@ class Elements:
         # Función para eliminar una conexión entre nodos en el grafo
         # Código de la función ...
 
-        # Guardar el cambio realizado en la pila
-        Elements.cambios_realizados.append(("delete_edge", (source_id, target_id)))
         return graph
 
     @staticmethod
@@ -123,7 +99,7 @@ class Elements:
         else:
             return graph
 
-    def open_txt():
+    def open_txt(self):
         # Cargar archivo
         uploaded_file = st.file_uploader("Cargar archivo", type=["txt"])
 
@@ -135,7 +111,7 @@ class Elements:
                 flow_styles = {"height": 500, "width": 800}
                 react_flow("graph", elements=Elements.get_elements(), flow_styles=flow_styles)
 
-    def open_json():
+    def open_json(self):
         # Cargar archivo
         uploaded_file = None
         uploaded_file = st.file_uploader("Cargar archivo", type=["json"])
@@ -143,13 +119,18 @@ class Elements:
         if uploaded_file is not None:
             # Cargar el archivo JSON
             if uploaded_file.type == 'application/json':
-                Elements.set_elements(create_elements_from_json(uploaded_file))
+                self.set_elements(create_elements_from_json(uploaded_file))
                 flow_styles = {"height": 500, "width": 800}
-                react_flow("graph", elements=Elements.get_elements(), flow_styles=flow_styles)
+                react_flow("graph", elements=self.get_elements(), flow_styles=flow_styles)
 
 
-    def define_styles(color):
+    def define_styles(self,color):
         style = { f"background": f'{color}', "width": 75, "height": 75, "align-items": "center",
                    "box-shadow": "-2px 10px 100px 3px rgba(255,255,255,0.25)", "text-shadow": "4px 4px 2px rgba(0,0,0,0.6)",
                    "font-size":"30px", "border-radius": "50%"}
+
+    def display_flow(self):
+        self.set_elements(create_elements_from_list(self.get_elements()))
+        flow_styles = {"height": 500, "width": 800}
+        react_flow("graph", elements=self.get_elements(), flow_styles=flow_styles)
 

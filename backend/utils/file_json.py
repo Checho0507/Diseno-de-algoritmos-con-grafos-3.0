@@ -1,13 +1,40 @@
-import json
 import os
-import streamlit as st
-from streamlit_react_flow import react_flow
+import json
 import pandas as pd
+import streamlit as st
 
-def export_graph_to_excel(graph_list, filename):
-    # Crear un DataFrame vacío
-    df = pd.DataFrame(graph_list)
-    df.to_excel(filename, index=False, engine='openpyxl')
+from openpyxl import Workbook
+from streamlit_react_flow import react_flow
+
+def create_directory(directory):
+    # Crear el directorio si no existe
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+# Función para guardar los datos en un archivo de Excel
+def export_graph_to_excel(elementos, nombre_archivo):
+    # Crear un nuevo libro de trabajo
+    wb = Workbook()
+    # Seleccionar la hoja activa (por defecto la primera)
+    ws = wb.active
+    # Definir los encabezados para las columnas
+    encabezados = ['id', 'type', 'style', 'data', 'position', 'linkedTo', 'source', 'target', 'animated']
+    # Escribir los encabezados en la primera fila
+    ws.append(encabezados)
+    # Iterar sobre los datos y escribir cada fila en el archivo de Excel
+    for elemento in elementos:
+        fila = []
+        for encabezado in encabezados:
+            if encabezado in elemento:
+                if encabezado == 'data':
+                    fila.append(elemento['data']['label'])
+                else:
+                    fila.append(str(elemento[encabezado]))
+            else:
+                fila.append('')
+        ws.append(fila)
+    # Guardar el archivo de Excel
+    wb.save(nombre_archivo)
 
 def save_elements_to_json(elements, directory):
     if elements != []:
@@ -31,9 +58,7 @@ def save_elements_to_json(elements, directory):
 
         st.write(f"Se ha guardado el archivo con el nombre: {filename}")
 
-        # Crear el directorio si no existe
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        create_directory(directory)
 
         # Guardar los datos en formato JSON en un archivo
         filepath = os.path.join(directory, filename)
@@ -70,9 +95,7 @@ def save_elements_to_json_as(elements, directory, filename):
                     file_counter += 1
                 filename = f"{filename_base}_{file_counter}{filename_ext}.json"
 
-            # Crear el directorio si no existe
-            if not os.path.exists(directory):
-                os.makedirs(directory)
+            create_directory(directory)
 
             # Guardar los datos en formato JSON en un archivo
             filepath = os.path.join(directory, filename+".json")
@@ -81,6 +104,3 @@ def save_elements_to_json_as(elements, directory, filename):
 
         # Mostrar el nombre de archivo seleccionado
         st.success(f"Se ha guardado el archivo con el nombre: {filename}.json")
-
-def cerrar_ventana():
-  st.write(f"<script>window.close()</script>")

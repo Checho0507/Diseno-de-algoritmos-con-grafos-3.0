@@ -101,14 +101,14 @@ def convert_to_react_flow(elements):
     return react_elements
 def create_elements_from_list(data_list):
     elements = []
+    if data_list:
+        for node_data in data_list:
+            elements.append(node_data)
 
-    for node_data in data_list:
-        elements.append(node_data)
-
-        linked_to = node_data.get("linkedTo", [])
-        for link in linked_to:
-            edge = extract_edge_data(str(node_data["id"]), link)
-            elements.append(edge)
+            linked_to = node_data.get("linkedTo", [])
+            for link in linked_to:
+                edge = extract_edge_data(str(node_data["id"]), link)
+                elements.append(edge)
     return elements
 
 

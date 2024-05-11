@@ -2,7 +2,7 @@ import random
 import streamlit as st
 from streamlit_react_flow import react_flow
 from collections import deque
-from backend.models.graph import Elements
+from backend.models.graph import Grafo
 import itertools
 import numpy as np
 from scipy.stats import wasserstein_distance
