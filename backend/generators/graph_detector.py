@@ -8,9 +8,8 @@ import numpy as np
 from scipy.stats import wasserstein_distance
 
 def grafo_formateado(datos):
-   st.subheader("Determinar si el grafo es bipartito")
-
    grafo = {}
+   graph = Grafo()
 
    for elemento in datos:
        if 'data' in elemento and 'label' in elemento['data']:
@@ -25,6 +24,15 @@ def grafo_formateado(datos):
                                    nodo_adyacente = otro_elemento['data']['label']
                                    grafo[nodo].append(nodo_adyacente)
                                    break
+   for elemento in datos:
+       if 'source' in elemento and 'target' in elemento:
+           if elemento['animated'] == False:
+               for nodo, conexiones in grafo.items():
+                   if nodo == graph.get_element_label_by_id(elemento['source']):
+                       grafo[nodo].append(graph.get_element_label_by_id(elemento['target']))
+                   if nodo == graph.get_element_label_by_id(elemento['target']):
+                       grafo[nodo].append(graph.get_element_label_by_id(elemento['source']))
+
    return grafo
 
 def grafo_formateado_con_pesos(datos):
@@ -52,7 +60,7 @@ def colorear_nodo(nodo_actual, color_actual, sumador0, sumador1):
     else:
         sumador1 += 120
     nodo_coloreado = {
-        "id": str(nodo_actual),
+        "id": random.randint(10000,99999),
         "type": "default",
         "data": {"label": f"{str(nodo_actual)}"},
         "style": {
@@ -105,7 +113,16 @@ def definir_colores(grafo):
                     color[nodo] = 1 - color[con]
                     break
                 else:
-                    color[nodo] = 0
+                    col = True
+                    for nodo2, colour in color.items():
+                        if nodo == nodo2:
+                            col = False
+                    if col:
+                        color[nodo] = 0
+                        color[con] = 1
+
+
+
             if not conexiones:
                 color[nodo] = 1
 
@@ -173,6 +190,7 @@ def es_bipartito_y_componente(colores, grafo):
 
 
 def componentes_conexas_bipartito(grafo):
+    g = Grafo()
     # Se inicializa el grafo
     graph = []
     print(grafo, "grafoooo")
@@ -262,14 +280,14 @@ def calcular_resultado_combinacion(subgrafo1, subgrafo2, grafo_original, dp):
         for nodo_destino, peso in conexiones.items():
             # Verificar si el nodo destino está en el subgrafo2
             if nodo_destino in subgrafo2:
-                resultado += peso
+                resultado += int(peso)
 
     # Recorrer las conexiones del subgrafo2
     for nodo, conexiones in subgrafo2.items():
         for nodo_destino, peso in conexiones.items():
             # Verificar si el nodo destino está en el subgrafo1
             if nodo_destino in subgrafo1:
-                resultado += peso
+                resultado += int(peso)
 
     # Almacenar el resultado en la tabla de memoización
     dp[(frozenset(subgrafo1.keys()), frozenset(subgrafo2.keys()))] = resultado

@@ -1,7 +1,7 @@
 import streamlit as st
+
 from streamlit_react_flow import react_flow
 from frontend.components.menu.menu import *
-from backend.models.graph import Grafo
 
 def main():
     st.title("Grafo con React Flow")
