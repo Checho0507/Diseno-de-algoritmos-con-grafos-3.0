@@ -1,6 +1,7 @@
 import random
 import pandas as pd
 
+from itertools import product
 from .sub_menu_3.sub_menu_3 import *
 from backend.utils import file_json
 from backend.generators import json_elements
@@ -10,11 +11,27 @@ from streamlit_react_flow import react_flow
 from backend.generators import graph_probability
 
 Elements = Grafo()
-clicks = 0
+matrices = []
+import ast
+
+def procesar_entrada(entrada, matriz_probabilidad):
+
+    for conjunto in entrada:
+        for vector in conjunto:
+            # Convertir cada vector en una cadena para usarla como índice
+            index = int("".join(map(str, vector)), 2)
+            # Determinar la fila y columna donde debe ir el "1"
+            fila = index // 32
+            columna = index % 32
+            # Colocar el "1" en la posición correspondiente de la matriz
+            matriz_probabilidad[fila][columna] = 1
+
+def crear_matriz_cero(n):
+    return [[0 for _ in range(n)] for _ in range(n)]
 
 def strategy_1_menu():
     st.subheader('Estrategia 1')
-    global clicks
+    global matrices
 
     options = ['Editar la Matriz de Probabilidades', 'Volver a la Matriz Original', 'Ingresar Sistema a Trabajar']
     selected_option = st.sidebar.selectbox('Opciones:', options, index = 2)
@@ -27,13 +44,87 @@ def strategy_1_menu():
         st.write("Volver a la Matriz Original")
         graph_probability.restablecer_matriz()
 
+    st.write('Ingrese las matrices en el siguiente formato: ')
+    st.write('[\n[0, 0, 0, 0, 1],\n[1, 0, 0, 1, 0],\n[0, 1, 0, 1, 0],\n[1, 1, 0, 0, 1],\n[0, 0, 1, 1, 0],'
+             '\n[1, 0, 1, 0, 1],\n[0, 1, 1, 0, 1],\n[1, 1, 1, 1, 0],]')
+    primera = 'A'
+    cant = st.number_input('Ingrese la cantidad de nodos',  min_value=1, value=1)
+    pot = 1
+    for i in range(cant):
+        pot *= 2
+        matrices.append('')
+
+    graph_probability.probabilities = crear_matriz_cero(pot)
+    combinaciones = generate_binary_combinations(cant)
+    graph_probability.states = combinaciones
+    x = 0
+    for i in range(pot):
+        c = combinaciones[i]
+        lista = []
+        for i in c:
+            lista.append(int(i))
+        cambio_matriz(lista,cant)
+        print(lista)
+
+    for i in range(cant):
+        text = st.text_input(f'Ingresar matriz para {primera}:')
+        primera = graph_probability.siguiente_letra_mayuscula(primera)
+        matrices[i]=text
+    print(matrices)
     st.write("Matriz de Probabilidades:")
     graph_probability.mostrar_tabla(graph_probability.probabilities)
 
     if selected_option == 'Ingresar Sistema a Trabajar':
         graph_probability.trabajar_sistema()
 
+def generate_binary_combinations(n):
+    """
+    Genera todas las combinaciones binarias posibles de n bits.
 
+    Args:
+    n (int): Número de bits.
+
+    Returns:
+    List[str]: Lista de combinaciones binarias en formato de cadenas.
+    """
+    combinations = [''.join(bits) for bits in product('01', repeat=n)]
+    return combinations
+
+
+def cambio_matriz(lista, cant):
+    global matrices
+    # Crear la representación de texto de la lista
+    text = '[' + ','.join(map(str, lista)) + ','
+
+    # Calcular el valor x
+    x = 0
+    pot = 1
+    for i in lista:
+        x += i * pot
+        pot *= 2
+    print("Lista:", lista)
+
+    # Inicializar y y pot para la segunda parte
+    pot = 1
+    y = 0
+
+    # Imprimir el texto para depuración
+    print("Texto de búsqueda:", text + "0,1]")
+
+    # Verificar la presencia en las matrices
+    for matriz in matrices:
+        print("Evaluando matriz:", matriz)
+        if f'{text}0,1]' in matriz:
+            print('Encontrado en:', matriz)
+            y += pot
+        pot *= 2
+
+    # Actualizar la matriz de probabilidades
+    graph_probability.probabilities[x][y] = 1
+
+    # Imprimir x y y para depuración
+    print("x:", x)
+    print("y:", y)
 
 def new_grafo_menu():
     options = ["Personalizado", "Aleatorio"]

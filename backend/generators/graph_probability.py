@@ -2,6 +2,7 @@ import uuid
 import pandas as pd
 import streamlit as st
 import timeit
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 import re
@@ -63,8 +64,8 @@ def mostrar_tabla(matriz):
     columns = []
     index = []
     for i in range(len(matriz)):
-        columns.append(f'F{i + 1}')
-        index.append(f'C{i + 1}')
+        columns.append(f'F{i}')
+        index.append(f'C{i}')
     # Redondear los elementos de la matriz a dos decimales
     matriz_redondeada = [[round(valor, 2) for valor in fila] for fila in matriz]
 
@@ -75,6 +76,7 @@ def trabajar_sistema():
     global probabilities
     global states
     string = st.text_input("Introduce el sistema a trabajar:")
+    execution_time = 0
     if st.button("Empezar"):
         # Llamada a la función y almacenamiento de los resultados
         fu_states, pr_states, iState = parse_input_string(string)
@@ -82,7 +84,19 @@ def trabajar_sistema():
         def branch_and_bound_example():
             indices_minimos, minimos_valores = branch_and_bound(list(pr_states), list(fu_states), probabilities, states,
                                                                 iState)
+
+        # Medir el tiempo de inicio
+        start_time = time.time()
+
+        # Llamar a la función cuya duración quieres medir
         branch_and_bound_example()
+
+        # Medir el tiempo de finalización
+        end_time = time.time()
+
+        # Calcular el tiempo total de ejecución
+        execution_time = end_time - start_time
+        st.success(f"El tiempo de ejecución de branch_and_bound_example fue de {execution_time:.4f} segundos.")
     else:
         crear_grafo()
 
@@ -371,7 +385,8 @@ def cambiar_aristas(resultado1,resultado2,grafo):
         for i in origenes2:
             for j in destinos2:
                 if i != j:
-                    graph.add_edge(grafo, get_element_by_label(grafo, i), get_element_by_label(grafo, f"{j}'"), True, 0)
+                    if get_element_by_label(grafo, i) is not None and get_element_by_label(grafo, f"{j}'") is not None:
+                        graph.add_edge(grafo, get_element_by_label(grafo, i), get_element_by_label(grafo, f"{j}'"), True, 0)
 
 def cambiar_nodos(presentes, futuros, inicial):
     global graph

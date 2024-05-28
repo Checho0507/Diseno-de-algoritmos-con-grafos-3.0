@@ -60,7 +60,7 @@ def colorear_nodo(nodo_actual, color_actual, sumador0, sumador1):
     else:
         sumador1 += 120
     nodo_coloreado = {
-        "id": random.randint(10000,99999),
+        "id": str(random.randint(10000,99999)),
         "type": "default",
         "data": {"label": f"{str(nodo_actual)}"},
         "style": {
@@ -79,12 +79,12 @@ def colorear_nodo(nodo_actual, color_actual, sumador0, sumador1):
     }
     return nodo_coloreado, sumador0, sumador1
 
-def arista_coloreado(nodo_actual, vecino):
+def arista_coloreado(nodo_actual, vecino, animated):
     enlace = {
         "id": f"edge-{nodo_actual}-{vecino}",
         "source": str(nodo_actual),
         "target": str(vecino),
-        "animated": True
+        "animated": animated
     }
     return enlace
 
@@ -221,8 +221,40 @@ def componentes_conexas_bipartito(grafo):
         # Graficar aristas
         for nodo, conexiones in grafo.items():
             for con in conexiones:
-                arista = arista_coloreado(nodo,con)
-                graph.append(arista)
+                conexion1 = []
+                conexion2 = []
+                if f'{nodo},{con}' in g.get_nodos_no_dirigidos() or f'{con},{nodo}' in g.get_nodos_no_dirigidos():
+                    for nodo2, conexiones2 in grafo.items():
+                        if nodo2 == con:
+                            count = 0
+                            for con2 in conexiones2:
+                                if con2 != nodo or count != 0:
+                                    conexion1.append(con2)
+                                else:
+                                    count += 1
+
+                    g.add_edge(graph,g.get_element_by_label(graph,nodo),g.get_element_by_label(graph,con),False,0)
+
+                    grafo[con] = conexion1
+
+                    for nodo2, conexiones2 in grafo.items():
+                        if nodo2 == nodo:
+                            conexion = []
+                            count = 0
+                            for con2 in conexiones2:
+                                if con2 != con or count != 0:
+                                    conexion2.append(con2)
+                                else:
+                                    count += 1
+
+                    g.add_edge(graph,g.get_element_by_label(graph,con),g.get_element_by_label(graph,nodo),False,0)
+
+                    grafo[nodo] = conexion2
+                else:
+                    n = g.get_element_by_label(graph, nodo)
+                    c = g.get_element_by_label(graph, con)
+                    arista = arista_coloreado(n['id'], c['id'], True)
+                    graph.append(arista)
 
         num_componentes_conexas = len(componentes_conexas)
 
