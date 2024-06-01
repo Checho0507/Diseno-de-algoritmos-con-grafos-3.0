@@ -9,6 +9,7 @@ from backend.models.graph import Grafo
 from backend.generators import graph_generator
 from streamlit_react_flow import react_flow
 from backend.generators import graph_probability
+from backend.utils.probability import *
 
 Elements = Grafo()
 matrices = []
@@ -64,15 +65,13 @@ def strategy_1_menu():
         for i in c:
             lista.append(int(i))
         cambio_matriz(lista,cant)
-        print(lista)
 
     for i in range(cant):
         text = st.text_input(f'Ingresar matriz para {primera}:')
         primera = graph_probability.siguiente_letra_mayuscula(primera)
         matrices[i]=text
-    print(matrices)
     st.write("Matriz de Probabilidades:")
-    graph_probability.mostrar_tabla(graph_probability.probabilities)
+    mostrar_tabla(graph_probability.probabilities)
 
     if selected_option == 'Ingresar Sistema a Trabajar':
         graph_probability.trabajar_sistema()
@@ -102,7 +101,6 @@ def cambio_matriz(lista, cant):
     for i in lista:
         x += i * pot
         pot *= 2
-    print("Lista:", lista)
 
     # Inicializar y y pot para la segunda parte
     pot = 1
@@ -113,9 +111,7 @@ def cambio_matriz(lista, cant):
 
     # Verificar la presencia en las matrices
     for matriz in matrices:
-        print("Evaluando matriz:", matriz)
         if f'{text}0,1]' in matriz:
-            print('Encontrado en:', matriz)
             y += pot
         pot *= 2
 
