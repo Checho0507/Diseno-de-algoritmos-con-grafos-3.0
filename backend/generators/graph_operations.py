@@ -89,3 +89,28 @@ def siguiente_letra_mayuscula(letra):
     if letra == 'Z':
         return 'A'
     return chr(ord(letra) + 1)
+
+
+def colorear_nodos_amarillo(element):
+    element['style'] = {
+        "background": "#FFFF00",
+        "width": 75,
+        "height": 75,
+        "align-items": "center",
+        "box-shadow": "-2px 10px 100px 3px rgba(255,255,255,0.25)",
+        "text-shadow": "4px 4px 2px rgba(0,0,0,0.3)",
+        "font-size": "30px",
+        "border-radius": "50%"
+    }
+
+def colear_nodos_gris(element):
+    element['style'] = {
+        "background": "#808080",
+        "width": 75,
+        "height": 75,
+        "align-items": "center",
+        "box-shadow": "rgba(255,255,255,0.25)",
+        "text-shadow": "4px 4px 2px rgba(0,0,0,0.3)",
+        "font-size": "30px",
+        "border-radius": "50%"
+    }

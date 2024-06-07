@@ -1,39 +1,28 @@
 import streamlit as st
-import timeit
 import time
 import matplotlib.pyplot as plt
-import queue
-
-from streamlit_react_flow import react_flow
+from pyemd import emd
+import numpy as np
+import uuid
+import re
 from queue import PriorityQueue
-from itertools import combinations, chain
+from itertools import combinations
 from backend.models.graph import Grafo
 from backend.generators.graph_operations import *
 from frontend.components.menu.sub_menu_1.sub_menu_2 import sub_menu_2
+from streamlit_react_flow import react_flow
+from scipy.stats import wasserstein_distance
+from itertools import combinations
 
-probabilities = [
-    [1, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 1, 0, 0, 0],
-    [0, 0, 0, 0, 0, 1, 0, 0],
-    [0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 1, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 1],
-    [0, 0, 0, 0, 0, 1, 0, 0],
-    [0, 0, 0, 1, 0, 0, 0, 0],
-]
-
-states = [
-    [0, 0, 0],
-    [1, 0, 0],
-    [0, 1, 0],
-    [1, 1, 0],
-    [0, 0, 1],
-    [1, 0, 1],
-    [0, 1, 1],
-    [1, 1, 1],
-]
-
+# Datos globales
+probabilities = []
+states = []
 graph = []
+
+def create_distance_matrix(n):
+    # Crear una matriz n x n donde cada entrada (i, j) es |i - j|
+    distance_matrix = np.abs(np.arange(n).reshape(-1, 1) - np.arange(n))
+    return distance_matrix
 
 def trabajar_sistema():
     global probabilities
@@ -41,68 +30,75 @@ def trabajar_sistema():
     string = st.text_input("Introduce el sistema a trabajar:")
     execution_time = 0
     if st.button("Empezar"):
-        # Llamada a la función y almacenamiento de los resultados
         fu_states, pr_states, iState = parse_input_string(string)
-
-        def branch_and_bound_example():
-            indices_minimos, minimos_valores = branch_and_bound(list(pr_states), list(fu_states), probabilities, states, iState)
-
-        # Medir el tiempo de inicio
-        start_time = time.time()
-
-        # Llamar a la función cuya duración quieres medir
-        branch_and_bound_example()
-
-        # Medir el tiempo de finalización
-        end_time = time.time()
-
-        # Calcular el tiempo total de ejecución
-        execution_time = end_time - start_time
+        r = generate_combinations(pr_states, fu_states)
+        matriz_sistema_original(fu_states, pr_states)
+        print(len(r))
+        r = functionTensor([0.75,0.25],[0,0,1,0])
+        o=np.array([0,0,0,0,1,0,0,0], dtype=np.float64)
+        d=np.array([0,0,0.75,0,0,0,0.25,0], dtype=np.float64)
+        dm = create_distance_matrix(len(o)).astype(np.float64)
+        emd_value = emd(o, d, dm)
+        print(emd_value, 'emd')
+        print(r, 'tensor')
         st.success(f"El tiempo de ejecución de branch_and_bound_example fue de {execution_time:.4f} segundos.")
     else:
         crear_grafo()
+
+
+def measure_execution_time(func, *args):
+    """
+    Mide el tiempo de ejecución de una función.
+
+    :param func: Función a ejecutar.
+    :param args: Argumentos de la función.
+    :return: Tiempo de ejecución en segundos.
+    """
+    start_time = time.time()
+    func(*args)
+    end_time = time.time()
+    return end_time - start_time
+
 
 def editar_matriz():
     global probabilities
     x = st.number_input("Ingrese las coordenadas X (Filas):", value=0)
     y = st.number_input("Ingrese las coordenadas Y (Columnas):", value=0)
-    # Mostrar las coordenadas ingresadas
     st.write(f"Coordenadas ingresadas: X = {x}, Y = {y}")
-
-    # Obtener el nuevo valor y validar que sea menor o igual a 1 y mayor o igual a 0
-    new_key = str(uuid.uuid4()) #Genera una clave unica para new
-    new = st.number_input("Ingrese el nuevo valor para las coordenadas ingresadas:")
-
+    new_value = st.number_input("Ingrese el nuevo valor para las coordenadas ingresadas:")
     if st.button("Actualizar Matriz"):
-        if new >= 0 and new <= 1:
-            if x != 0 and y != 0:
-                nueva_matriz = []
-                i = 0
-                for filas in probabilities:
-                    i += 1
-                    fila = []
-                    j = 0
-                    for elemento in filas:
-                        j += 1
-                        if i == x and j == y:
-                            fila.append(round(new,2))
-                        else:
-                            fila.append(round(elemento,2))
-                    nueva_matriz.append(fila)
-                probabilities = nueva_matriz
-            else:
-                st.warning("Ingrese valores validos para las coordenadas")
-        else:
-            st.warning("Recuerde que el valor debe estar entre 0 y 1")
+        update_matrix(x, y, new_value)
+
+
+def update_matrix(x, y, new_value):
+    """
+    Actualiza la matriz de probabilidades con un nuevo valor.
+
+    :param x: Coordenada X.
+    :param y: Coordenada Y.
+    :param new_value: Nuevo valor.
+    """
+    global probabilities
+    if 0 <= new_value <= 1 and x > 0 and y > 0:
+        probabilities = [
+            [round(new_value if i == x and j == y else probabilities[i][j], 2) for j in range(len(probabilities[i]))]
+            for i in range(len(probabilities))
+        ]
+    else:
+        st.warning("Ingrese valores válidos para las coordenadas y el valor debe estar entre 0 y 1.")
+
 
 def generate_combinations(present_states, future_states):
-    return [(present_state, future_state) for i in range(len(present_states) + 1) for present_state in combinations(present_states, i)
-            for j in range(len(future_states) + 1) for future_state in combinations(future_states, j)
-            if not (present_state == future_state and present_state != ()) and not (present_state == () and future_state == ()) and not (present_state == tuple(present_states) and future_state == tuple(future_states))]
-
-def generate_remaining_states(combinations_list, complete_present_state, complete_future_state):
-    return [(tuple(sorted(set(complete_present_state) - set(present_state))), tuple(sorted(set(complete_future_state) - set(future_state))))
-            for present_state, future_state in combinations_list]
+    return [
+        (present_state, future_state)
+        for i in range(len(present_states) + 1)
+        for present_state in combinations(present_states, i)
+        for j in range(len(future_states) + 1)
+        for future_state in combinations(future_states, j)
+        if not (present_state == future_state and present_state != ())
+           and not (present_state == () and future_state == ())
+           and not (present_state == tuple(present_states) and future_state == tuple(future_states))
+    ]
 
 def getIndicesToMargenalice(states, state):
     availableIndices = []
@@ -114,304 +110,118 @@ def getIndicesToMargenalice(states, state):
             csValue = str(state[i]) + csValue
 
     for i in range(len(states)):
-        key = ""
-        for j in range(len(availableIndices)):
-            key += str(states[i][availableIndices[j]])
+        key = "".join(str(states[i][index]) for index in availableIndices)
+        indices[key] = indices.get(key, []) + [i]
 
-        indices[key] = indices.get(key) + [i] if indices.get(key) else [i]
-    if not csValue:
-        return indices, 0
-    return indices, int(csValue, 2)
+    return indices, int(csValue, 2) if csValue else 0
 
-def margenaliceNextState(nsIndices, probabilites):
-    nsTransitionTable = [[None] * len(nsIndices) for i in range(len(probabilites))]
-    currentColumn = 0
-    for indices in nsIndices.values():
+
+def margenaliceNextState(nsIndices, probabilities):
+    nsTransitionTable = [[None] * len(nsIndices) for _ in range(len(probabilities))]
+    for currentColumn, indices in enumerate(nsIndices.values()):
         for i in range(len(nsTransitionTable)):
-            probability = 0
-            for j in range(len(indices)):
-                probability += probabilites[i][indices[j]]
-
-            nsTransitionTable[i][currentColumn] = probability
-
-        currentColumn += 1
-
+            nsTransitionTable[i][currentColumn] = sum(probabilities[i][index] for index in indices)
     return nsTransitionTable
 
+
 def margenaliceCurrentState(csIndices, nsTransitionTable):
-    csTransitionTable = [
-        [None] * len(nsTransitionTable[0]) for i in range(len(csIndices))
-    ]
-
-    currentRow = 0
-    for indices in csIndices.values():
+    csTransitionTable = [[None] * len(nsTransitionTable[0]) for _ in range(len(csIndices))]
+    for currentRow, indices in enumerate(csIndices.values()):
         for i in range(len(csTransitionTable[0])):
-            probability = 0
-            for j in range(len(indices)):
-                probability += nsTransitionTable[indices[j]][i]
-
-            csTransitionTable[currentRow][i] = probability / len(indices)
-
-        currentRow += 1
-
+            csTransitionTable[currentRow][i] = sum(nsTransitionTable[index][i] for index in indices) / len(indices)
     return csTransitionTable
 
-def probabilityTransitionTable(probabilities, states, currentState, nextState):
-    nsIndices, _ = getIndicesToMargenalice(states, nextState)
-    #print(nsIndices)
-    csIndices, csValue = getIndicesToMargenalice(states, currentState)
-    #print(csIndices, csValue)
-    nsTransitionTable = margenaliceNextState(nsIndices, probabilities)
-    csTransitionTable = margenaliceCurrentState(csIndices, nsTransitionTable)
-
-    return csTransitionTable[csValue]
 
 def functionTensor(dividedSystem1, dividedSystem2):
-    dividedSystem = np.outer(dividedSystem1, dividedSystem2)
-    return dividedSystem
+    return np.outer(dividedSystem1, dividedSystem2)
+
 
 def calc_emd(original_distribution, divided_distribution):
-    # Convertimos las distribuciones en arrays de numpy
     original_array = np.array(original_distribution)
     divided_array = np.array(divided_distribution)
+    emd = wasserstein_distance(np.arange(len(original_array)), np.arange(len(divided_array)), original_array,
+                               divided_array)
+    return round(emd / 2, 2)
 
-    # Calculamos el EMD usando la función wasserstein_distance de scipy
-    emd = wasserstein_distance(np.arange(len(original_array)), np.arange(len(divided_array)), original_array, divided_array)
-    emd /= 2
-    emd = round(emd, 2)
-    return emd
 
 def translate_systems(system_tuple, initialState):
+    letters = [chr(65 + i) for i in range(cantidad_nodos())]
     results = []
-    letters = []
-    primera = 'A'
-    for i in range(cantidad_nodos()):
-        letters.append(primera)
-        primera = siguiente_letra_mayuscula(primera)
-
-    letters_to_check = letters
-
     for i, tuple_item in enumerate(system_tuple):
-
-        result_tuple = [0 if letter in tuple_item else None for letter in letters_to_check]
-
+        result_tuple = [0 if letter in tuple_item else None for letter in letters]
         if i % 2 == 0:
-            for index, initial in enumerate(initialState):
-                if initial == 1 and letters_to_check[index] in tuple_item:
-                    result_tuple[index] = 1
-
+            result_tuple = [1 if initialState[idx] == 1 and letter in tuple_item else val for idx, (letter, val) in
+                            enumerate(zip(letters, result_tuple))]
         results.append(tuple(result_tuple))
     return results
 
-def parse_input_string(input_string):
-    # Extraer present_states, future_states e iState de la cadena
-    match = re.match(r"([A-Za-z-Ø]+)ᵗ⁺¹\|([A-Za-z-Ø]+)ᵗ\s*=\s*(\d+)", input_string)
 
+def parse_input_string(input_string):
+    match = re.match(r"([A-Za-z-Ø]+)ᵗ⁺¹\|([A-Za-z-Ø]+)ᵗ\s*=\s*(\d+)", input_string)
     if not match:
         raise ValueError("Formato de cadena no válido")
-
     pr_states = tuple(match.group(1))
     fu_states = tuple(match.group(2))
     iState = [int(digit) for digit in match.group(3)]
-
     return pr_states, fu_states, iState
 
-def branch_and_bound(present_states, future_states, probabilities, states, initial_state):
-    if len(present_states) > len(initial_state):
-        st.warning('Asegurese de ingresar correctamente el sistema a trabajar')
-        return [],[]
-    else:
-        combinations = generate_combinations(present_states, future_states)
-        remaining_states = generate_remaining_states(combinations, present_states, future_states)
-        translated_combinations = [translate_systems(combination, initial_state) for combination in combinations]
-        translated_remaining = [translate_systems(complement, initial_state) for complement in remaining_states]
-
-        current_states_combinations, future_states_combinations = zip(*translated_combinations)
-        current_states_remaining, future_states_remaining = zip(*translated_remaining)
-
-        combined_states = (present_states, future_states)
-        translated_states = translate_systems(combined_states, initial_state)
-
-        result_combination = [probabilityTransitionTable(probabilities, states, list(current), list(next_state))
-                              for current, next_state in zip(current_states_combinations, future_states_combinations)]
-
-        result_complement = [probabilityTransitionTable(probabilities, states, list(current), list(next_state))
-                             for current, next_state in zip(current_states_remaining, future_states_remaining)]
-
-        divided_distribution = [functionTensor(combination_result, complement_result)
-                                for combination_result, complement_result in zip(result_combination, result_complement)]
-
-        original_distribution = probabilityTransitionTable(probabilities, states, translated_states[0], translated_states[1])
-
-        # Verificar si divided_distribution está vacío
-        if not divided_distribution:
-            print("No hay distribuciones divididas para analizar.")
-            return None, None
-
-        # Ordenar divided_distribution por cota inferior ascendente
-        divided_distribution = sorted(divided_distribution, key=lambda dist: calculate_lower_bound(original_distribution, dist))
-
-        minimum_value, minimum_index = branch_and_bound_helper(original_distribution, divided_distribution)
-
-        if minimum_index is not None:
-            # Invertir el orden de las letras en cada subsistema y ordenar alfabéticamente
-            inverted_comb = " | ".join("".join(sorted(c)) if c and c != ('',) else 'Ø' for c in combinations[minimum_index][::-1])
-            inverted_comb_comp = " | ".join("".join(sorted(c)) if c and c != ('',) else 'Ø' for c in remaining_states[minimum_index][::-1])
-
-            # Reemplazar el primer ' | ' por 'Ø | ' si el primer subsistema es vacío
-            inverted_comb = inverted_comb.replace(' | ', 'Ø | ', 1) if inverted_comb.startswith(' | ') else inverted_comb
-            inverted_comb_comp = inverted_comb_comp.replace(' | ', 'Ø | ', 1) if inverted_comb_comp.startswith(' | ') else inverted_comb_comp
-
-            # Imprimir la información con el nuevo formato
-            st.success(f"El mínimo valor es: {minimum_value}, y estos subsistemas cumplen con ello: {inverted_comb} y {inverted_comb_comp}.")
-            cambiar_grafo(present_states, future_states, initial_state, inverted_comb, inverted_comb_comp)
-        return minimum_index, minimum_value
-
-def colear_nodos_gris(element):
-    element['style'] = {
-        "background": "#808080",
-        "width": 75,
-        "height": 75,
-        "align-items": "center",
-        "box-shadow": "rgba(255,255,255,0.25)",
-        "text-shadow": "4px 4px 2px rgba(0,0,0,0.3)",
-        "font-size": "30px",
-        "border-radius": "50%"
-    }
-
-def colorear_nodos_amarillo(element):
-    element['style'] = {
-        "background": "#FFFF00",
-        "width": 75,
-        "height": 75,
-        "align-items": "center",
-        "box-shadow": "-2px 10px 100px 3px rgba(255,255,255,0.25)",
-        "text-shadow": "4px 4px 2px rgba(0,0,0,0.3)",
-        "font-size": "30px",
-        "border-radius": "50%"
-    }
-
 def primera_particion(resultado1):
+    destinos1, origenes1 = [], []
     div = False
-    destinos1 = []
-    origenes1 = []
-    for i in range(len(resultado1)):
-        if resultado1[i] == '|':
+    for char in resultado1:
+        if char == '|':
             div = True
-        else:
-            if resultado1[i] != ' ' and not div:
-                destinos1.append(resultado1[i])
-            if resultado1[i] != ' ' and div:
-                origenes1.append(resultado1[i])
+        elif char != ' ':
+            (origenes1 if div else destinos1).append(char)
     return destinos1, origenes1
 
+
 def segunda_particion(resultado2):
+    destinos2, origenes2 = [], []
     div = False
-    destinos2 = []
-    origenes2 = []
-    for i in range(len(resultado2)):
-        if resultado2[i] == '|':
+    for char in resultado2:
+        if char == '|':
             div = True
-        else:
-            if resultado2[i] != ' ' and not div:
-                destinos2.append(resultado2[i])
-            if resultado2[i] != ' ' and div:
-                origenes2.append(resultado2[i])
-    return destinos2,origenes2
+        elif char != ' ':
+            (origenes2 if div else destinos2).append(char)
+    return destinos2, origenes2
+
 
 def get_element_by_label(grafo, label):
-    for element in grafo:
-        if 'data' in element:
-            if element['data']['label'] == label:
-                return element
+    return next((element for element in grafo if 'data' in element and element['data']['label'] == label), None)
+
 
 def get_element_by_id(grafo, id):
-    for element in grafo:
-        if element['id'] == id:
-                return element
+    return next((element for element in grafo if element['id'] == id), None)
 
-def cambiar_aristas(resultado1,resultado2,grafo):
+
+def cambiar_aristas(resultado1, resultado2, grafo):
     graph = Grafo()
     destinos1, origenes1 = primera_particion(resultado1)
     if 'Ø' not in destinos1 and 'Ø' not in origenes1:
-        for i in origenes1:
-            for j in destinos1:
-                if i != j:
-                    graph.add_edge(grafo, get_element_by_label(grafo, i), get_element_by_label(grafo, f"{j}'"), True, 0)
-
+        for origen in origenes1:
+            for destino in destinos1:
+                if origen != destino:
+                    graph.add_edge(grafo, get_element_by_label(grafo, origen),
+                                   get_element_by_label(grafo, f"{destino}'"), True, 0)
     destinos2, origenes2 = segunda_particion(resultado2)
     if 'Ø' not in destinos2 and 'Ø' not in origenes2:
-        for i in origenes2:
-            for j in destinos2:
-                if i != j:
-                    if get_element_by_label(grafo, i) is not None and get_element_by_label(grafo, f"{j}'") is not None:
-                        graph.add_edge(grafo, get_element_by_label(grafo, i), get_element_by_label(grafo, f"{j}'"), True, 0)
+        for origen in origenes2:
+            for destino in destinos2:
+                if origen != destino and get_element_by_label(grafo, origen) and get_element_by_label(grafo,
+                                                                                                      f"{destino}'"):
+                    graph.add_edge(grafo, get_element_by_label(grafo, origen),
+                                   get_element_by_label(grafo, f"{destino}'"), True, 0)
+
 
 def calculate_lower_bound(original_distribution, divided_dist):
-    # Convertir a arreglos de NumPy
-    original_distribution = np.array(original_distribution)
-    divided_dist = np.array(divided_dist)
-
-    # Aplanar las distribuciones para asegurar formas compatibles
-    original_distribution = original_distribution.flatten()
-    divided_dist = divided_dist.flatten()
-
-    # Calcular la diferencia absoluta máxima elemento a elemento
-    max_diff = np.max(np.abs(original_distribution - divided_dist))
-    return max_diff
-
-def branch_and_bound_helper(original_distribution, divided_distribution):
-    minimum_value = float('inf')
-    minimum_index = -1
-
-    def calculate_upper_bound(original_distribution, divided_dist):
-        original_distribution = np.array(original_distribution)
-        divided_dist = np.array(divided_dist)
-
-        original_distribution = original_distribution.flatten()
-        divided_dist = divided_dist.flatten()
-
-        max_diff = np.max(np.abs(original_distribution - divided_dist))
-
-        return max_diff
-
-    stack = [(0, 0)]  # stack of (current_index, current_emd)
-
-    while stack:
-        current_index, current_emd = stack.pop()
-
-        if current_index >= len(divided_distribution):
-            continue
-
-        distribution = divided_distribution[current_index]
-        result_emd = calc_emd(original_distribution, distribution)
-
-        if result_emd < minimum_value:
-            minimum_value = result_emd
-            minimum_index = current_index
-
-        if result_emd == 0:
-            break
-
-        upper_bound = calculate_upper_bound(original_distribution, divided_distribution[current_index])
-
-        if upper_bound < minimum_value:
-            continue
-
-        stack.append((current_index + 1, upper_bound))
-
-    return minimum_value, minimum_index
+    return np.max(np.abs(np.array(original_distribution).flatten() - np.array(divided_dist).flatten()))
 
 
 
 def cantidad_nodos():
-    global probabilities
-    l = len(probabilities)
-    cant = 0
-    while l != 1:
-        l = l / 2
-        cant += 1
-    return cant
+    return int(np.log2(len(probabilities)))
+
 
 def crear_grafo():
     global graph
@@ -419,3 +229,53 @@ def crear_grafo():
     agregar_conexiones()
     flow_styles = {"height": 8000, "width": 800}
     react_flow("graph", elements=graph, flow_styles=flow_styles)
+
+def mostrar_tabla():
+    global probabilities
+    columns = [f'F{i}' for i in range(len(probabilities))]
+    index = [f'C{i}' for i in range(len(probabilities))]
+    matriz_redondeada = [[round(valor, 2) for valor in fila] for fila in probabilities]
+    df = pd.DataFrame(matriz_redondeada, columns=columns, index=index)
+    st.table(df.style.format("{:.2f}"))
+
+def crear_dict_pr(pr_states):
+    primera = 'A'
+    pr = {}
+    j = 0
+
+    while (len(pr_states) != len(pr)):
+        if primera in pr_states:
+            pr[primera] = j
+        j += 1
+        primera = siguiente_letra_mayuscula(primera)
+
+    return pr
+
+def crear_dict_fu(fu_states):
+    primera = 'A'
+    fu = {}
+    j = 0
+
+    while (len(fu_states) != len(fu)):
+        if primera in fu_states:
+            fu[primera] = j
+        j += 1
+        primera = siguiente_letra_mayuscula(primera)
+
+    return fu
+
+def crear_diccionarios(fu_states, pr_states):
+    return crear_dict_pr(pr_states), crear_dict_fu(fu_states)
+
+def matriz_sistema_original(fu_states, pr_states):
+    print(fu_states,pr_states)
+    pr, fu = crear_diccionarios(fu_states, pr_states)
+
+    print(pr,fu)
+
+def generate_remaining_states(combinations_list, complete_present_state, complete_future_state):
+    return [(tuple(sorted(set(complete_present_state) - set(present_state))), tuple(sorted(set(complete_future_state) - set(future_state))))
+            for present_state, future_state in combinations_list]
+
+
+

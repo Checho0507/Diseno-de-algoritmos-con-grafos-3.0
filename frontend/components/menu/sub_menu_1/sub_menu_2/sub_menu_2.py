@@ -70,8 +70,9 @@ def strategy_1_menu():
         text = st.text_input(f'Ingresar matriz para {primera}:')
         primera = graph_probability.siguiente_letra_mayuscula(primera)
         matrices[i]=text
+
     st.write("Matriz de Probabilidades:")
-    mostrar_tabla(graph_probability.probabilities)
+    graph_probability.mostrar_tabla()
 
     if selected_option == 'Ingresar Sistema a Trabajar':
         graph_probability.trabajar_sistema()
