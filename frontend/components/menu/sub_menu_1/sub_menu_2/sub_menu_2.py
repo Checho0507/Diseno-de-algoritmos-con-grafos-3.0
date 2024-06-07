@@ -8,8 +8,6 @@ from backend.generators import json_elements
 from backend.models.graph import Grafo
 from backend.generators import graph_generator
 from streamlit_react_flow import react_flow
-from backend.generators import graph_probability
-from backend.utils.probability import *
 
 Elements = Grafo()
 matrices = []
