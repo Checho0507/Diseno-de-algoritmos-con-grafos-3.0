@@ -17,6 +17,7 @@ from itertools import combinations
 
 # Datos globales
 probabilities = []
+matrices = []
 states = []
 graph = []
 
@@ -25,38 +26,61 @@ def create_distance_matrix(n):
     distance_matrix = np.abs(np.arange(n).reshape(-1, 1) - np.arange(n))
     return distance_matrix
 
+def matriz_original():
+    global matrices
+    matriz = []
+    count = 0
+    for elemento in matrices[0]:
+        if count != len(matrices[0])-2:
+            count += 1
+            matriz.append(elemento)
+    return matriz
+
 def trabajar_sistema():
     global probabilities
+    global matrices
     global states
 
     string = st.text_input("Introduce el sistema a trabajar:")
     execution_time = 0
     if st.button("Empezar"):
+        min = -1
         fu_states, pr_states, iState = parse_input_string(string)
+        print(iState)
         combinations = generate_combinations(fu_states, pr_states)
         futuros, presentes = matriz_sistema_original(fu_states, pr_states)
         print(futuros, presentes, f'\n{combinations}')
+        print(matriz_original())
         # Recorrer cada elemento de la lista
         for elemento in combinations:
-            futuro, presente = elemento
-            print(elemento)
-            # Validar si el futuro elemento es ()
-            if futuro == ():
-                if len(segundo) == 1:
-                    letra = segundo[0]
-                    presente = futuros[letra]
-                    for i in range(len(sub_menu_2.matrices)-1):
-                        if i == presente:
-                            procesar_string(sub_menu_2.matrices[i])
-
+            presente, futuro = elemento
+            valor1=[]
             # Validar si el presente elemento es ()
+            if futuro == () and len(presente) == 1:
+                print(elemento)
+                letra = presente[0]
+                indice = presentes[letra]
+                for i in range(len(matrices)):
+                    if i == indice:
+                        valores = [0,0]
+                        for matriz in matrices[i]:
+                            valores[1] += matriz[len(matriz)-1]
+                        valores[1] = valores[1] / len(matrices[i])
+                        valores[0] = 1 - valores[1]
+                        valor1 = valores
+                        print(valores, 'valores')
+
+                complemento = combinations[int(len(combinations)-(indice+1))]
+                presentes2 = complemento[0]
+                futuros2 = complemento[1]
+                print(futuros2, presentes2)
+                
+            # Validar si el futuro elemento es ()
             if presente == ():
-                print(f"El segundo elemento es vacío: {primero}, {segundo}")
+                print(f"El segundo elemento es vacío:")
 
             if elemento == combinations[int(len(combinations)/2)]:
                 break
-
-        print(combinations)
         r = functionTensor([0.75,0.25],[0,0,1,0])
         o=np.array([0,0,0,0,1,0,0,0], dtype=np.float64)
         d=np.array([0,0,0.75,0,0,0,0.25,0], dtype=np.float64)
@@ -243,7 +267,7 @@ def calculate_lower_bound(original_distribution, divided_dist):
 
 
 def cantidad_nodos():
-    return int(np.log2(len(probabilities)))
+    return int(len(probabilities))
 
 
 def crear_grafo():
@@ -253,12 +277,39 @@ def crear_grafo():
     flow_styles = {"height": 8000, "width": 800}
     react_flow("graph", elements=graph, flow_styles=flow_styles)
 
-def mostrar_tabla():
-    global probabilities
-    columns = [f'F{i}' for i in range(len(probabilities))]
-    index = [f'C{i}' for i in range(len(probabilities))]
-    matriz_redondeada = [[round(valor, 2) for valor in fila] for fila in probabilities]
-    df = pd.DataFrame(matriz_redondeada, columns=columns, index=index)
+def pad_sublists(lista_de_listas):
+    max_length = max(len(sublista) for sublista in lista_de_listas)
+    for sublista in lista_de_listas:
+        if len(sublista) < max_length:
+            sublista.extend([0] * (max_length - len(sublista)))
+    return lista_de_listas
+
+def string_a_lista_de_listas(string):
+    lista = []
+    l = []
+    for i, j in enumerate(string):  # Corregimos el uso de enumerate
+        if i != 0 and i != len(string)-1:
+            if j == '[':
+                for ii, jj in enumerate(string):  # Corregimos el uso de enumerate
+                    if ii > i:  # Corregimos la lógica de comparación
+                        if jj == ']':
+                            break
+                        if jj.isdigit() or jj.replace('.', '').isdigit():  # Corregimos la verificación numérica
+                            l.append(float(jj))  # Convertimos a float en lugar de int para manejar decimales
+                lista.append(l)
+                l = []  # Reiniciamos la lista interna para la próxima sublista
+
+    return lista
+
+
+def mostrar_tabla(text, letra):
+    global matrices
+    matriz = string_a_lista_de_listas(text)
+    matrices.append(matriz)
+    st.write(f'Matriz de {letra}:')
+    columns = [f'F{i}' for i in range(len(matriz[0]))]
+    index = [f'C{i}' for i in range(len(matriz))]
+    df = pd.DataFrame(matriz, columns=columns, index=index)
     st.table(df.style.format("{:.2f}"))
 
 def crear_dict_pr(pr_states):
