@@ -1,3 +1,4 @@
+import ast
 import streamlit as st
 import time
 import matplotlib.pyplot as plt
@@ -27,13 +28,35 @@ def create_distance_matrix(n):
 def trabajar_sistema():
     global probabilities
     global states
+
     string = st.text_input("Introduce el sistema a trabajar:")
     execution_time = 0
     if st.button("Empezar"):
         fu_states, pr_states, iState = parse_input_string(string)
-        r = generate_combinations(pr_states, fu_states)
-        matriz_sistema_original(fu_states, pr_states)
-        print(len(r))
+        combinations = generate_combinations(fu_states, pr_states)
+        futuros, presentes = matriz_sistema_original(fu_states, pr_states)
+        print(futuros, presentes, f'\n{combinations}')
+        # Recorrer cada elemento de la lista
+        for elemento in combinations:
+            futuro, presente = elemento
+            print(elemento)
+            # Validar si el futuro elemento es ()
+            if futuro == ():
+                if len(segundo) == 1:
+                    letra = segundo[0]
+                    presente = futuros[letra]
+                    for i in range(len(sub_menu_2.matrices)-1):
+                        if i == presente:
+                            procesar_string(sub_menu_2.matrices[i])
+
+            # Validar si el presente elemento es ()
+            if presente == ():
+                print(f"El segundo elemento es vacío: {primero}, {segundo}")
+
+            if elemento == combinations[int(len(combinations)/2)]:
+                break
+
+        print(combinations)
         r = functionTensor([0.75,0.25],[0,0,1,0])
         o=np.array([0,0,0,0,1,0,0,0], dtype=np.float64)
         d=np.array([0,0,0.75,0,0,0,0.25,0], dtype=np.float64)
@@ -203,15 +226,15 @@ def cambiar_aristas(resultado1, resultado2, grafo):
             for destino in destinos1:
                 if origen != destino:
                     graph.add_edge(grafo, get_element_by_label(grafo, origen),
-                                   get_element_by_label(grafo, f"{destino}'"), True, 0)
+                                get_element_by_label(grafo, f"{destino}'"), True, 0)
     destinos2, origenes2 = segunda_particion(resultado2)
     if 'Ø' not in destinos2 and 'Ø' not in origenes2:
         for origen in origenes2:
             for destino in destinos2:
                 if origen != destino and get_element_by_label(grafo, origen) and get_element_by_label(grafo,
-                                                                                                      f"{destino}'"):
+                                                                                                    f"{destino}'"):
                     graph.add_edge(grafo, get_element_by_label(grafo, origen),
-                                   get_element_by_label(grafo, f"{destino}'"), True, 0)
+                                get_element_by_label(grafo, f"{destino}'"), True, 0)
 
 
 def calculate_lower_bound(original_distribution, divided_dist):
@@ -268,10 +291,8 @@ def crear_diccionarios(fu_states, pr_states):
     return crear_dict_pr(pr_states), crear_dict_fu(fu_states)
 
 def matriz_sistema_original(fu_states, pr_states):
-    print(fu_states,pr_states)
-    pr, fu = crear_diccionarios(fu_states, pr_states)
-
-    print(pr,fu)
+    fu, pr = crear_diccionarios(fu_states, pr_states)
+    return pr, fu
 
 def generate_remaining_states(combinations_list, complete_present_state, complete_future_state):
     return [(tuple(sorted(set(complete_present_state) - set(present_state))), tuple(sorted(set(complete_future_state) - set(future_state))))
@@ -279,3 +300,20 @@ def generate_remaining_states(combinations_list, complete_present_state, complet
 
 
 
+def procesar_string(input_string):
+    # Eliminar espacios y caracteres innecesarios
+    input_string = input_string.strip("")
+
+    # Convertir el string a una lista de listas
+    listas = ast.literal_eval(input_string)
+
+    # Extraer los últimos números de cada lista
+    ultimos_numeros = [lista[-1] for lista in listas]
+
+    # Calcular la suma de los últimos números
+    suma = sum(ultimos_numeros)
+
+    # Dividir la suma por el número de listas
+    resultado = suma / len(ultimos_numeros)
+
+    return resultado
