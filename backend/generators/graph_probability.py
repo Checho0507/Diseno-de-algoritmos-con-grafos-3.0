@@ -18,77 +18,147 @@ from itertools import combinations
 # Datos globales
 probabilities = []
 matrices = []
+original = []
 states = []
 graph = []
 
 def create_distance_matrix(n):
-    # Crear una matriz n x n donde cada entrada (i, j) es |i - j|
     distance_matrix = np.abs(np.arange(n).reshape(-1, 1) - np.arange(n))
     return distance_matrix
 
-def matriz_original():
-    global matrices
-    matriz = []
-    count = 0
-    for elemento in matrices[0]:
-        if count != len(matrices[0])-2:
-            count += 1
-            matriz.append(elemento)
-    return matriz
-
-def trabajar_sistema():
-    global probabilities
+def presente_vacio(elemento, futuro, futuros, dic1, iState, combinations):
+    valor1=[]
     global matrices
     global states
+    print(elemento)
+    letra = futuro[0]
+    indice = futuros[letra]
+    for i in range(len(matrices)):
+        if i == indice:
+            valores = [0,0]
+            for matriz in matrices[i]:
+                valores[1] += matriz[len(matriz)-1]
+            valores[1] = valores[1] / len(matrices[i])
+            valores[0] = 1 - valores[1]
+            valor1 = valores
+            print(valores, 'valores')
+    complemento = combinations[int(len(combinations)-(indice+1))]
+    futuros2 = complemento[1]
+    presentes2 = complemento[0]
+    aux = {}
+    print('futuros: ', futuros, futuros2)
+    for clave, valor in futuros.items():
+        if clave not in futuros2:
+            for clave2, valor2 in dic1.items():
+                l = []
+                for i in range(len(valor2)):
+                    if i != valor:
+                        l.append(valor2[i])
+                aux[clave2] = l
+    #Aux devuelve 0...31 con valor de 1 []
+    print(aux, 'aux')
+    aux2 = {}
+    new_states = convertir_y_cambiar(states)
+    for i in range(len(new_states)):
+        for clave, valor in futuros.items():
+            l = []
+            if clave in presentes2:
+                l.append(new_states[i][valor])
+        aux2[i] = l
+    #Aux2 devuelve 0..31 con valores repetidos littleE
+    print(aux2, 'aux2')
+    aux3 = {}
+    for clave, valor in aux2.items():
+        l = []
+        for clave2, valor2 in aux2.items():
+            if valor == valor2:
+                l.append(clave2)
+        aux3[clave] = l
+    #Aux3 devuelve 0...n 
+    print(aux3, 'aux3')
+    # {0: [0,2,3,4], }
+    margin = {}
+    i = 0
+    for clave, valor in aux3.items():
+        isin = False
+        for cl, val in margin.items():
+            if valor == valor:
+                isin = True
+        if not isin:
+            for clave2, valor2 in aux3.items():
+                if valor == valor2:
+                    margin[i] = valor
+                    i+=1
+                
+    #{0:[0,0,0],1:[0,1,0],2:[0,0,0]}
+    #{0:17, 1:8}
 
+def matriz_original(indice):
+    global matrices
+    matriz = []
+    for elemento in matrices[indice]:
+        matriz.append(elemento)
+    return matriz
+
+def convertir_y_cambiar(bin_list):
+    # Convertir cada cadena binaria a una lista de enteros y cambiar el orden
+    result = [[int(bit) for bit in reversed(bin_str)] for bin_str in bin_list]
+    return result
+
+def empezar_trabajo(string, execution_time, dic1):
+    global states
+    estados = []
+    pr_states, fu_states, iState = parse_input_string(string)
+    presentes, futuros = sistema_original(fu_states, pr_states)
+    if len(iState) == len(presentes):
+        combinations = generate_combinations(pr_states, fu_states)
+        primera = 'A'
+        for i in range(len(matrices)):
+            estados.append(primera)
+            primera = siguiente_letra_mayuscula(primera)
+        matriz = matriz_sistema_original(dic1,pr_states, fu_states, futuros, presentes)
+        print(futuros, presentes, iState)
+        # Recorrer cada elemento de la lista
+        for elemento in combinations:
+            futuro, presente = elemento
+            # Validar si el presente elemento es ()
+            if presente == () and len(futuro) == 1:
+                presente_vacio(elemento, futuro, futuros, dic1, iState, combinations)
+            # Validar si el futuro elemento es ()
+            if futuro == () and len(presente) == 1:
+                print(elemento)
+                valor = [1]
+                print(valor)
+                letra = presente[0]
+                indice = presentes[letra]
+                complemento = combinations[int(len(combinations)-(indice+1))]
+                presentes2 = complemento[1]
+                aux = {}
+                print('presentes: ', presentes, presentes2)
+                new_states = convertir_y_cambiar(states)
+                for i in range(len(new_states)):
+                    l = []
+                    for clave, valor in presentes.items():
+                        if clave in presentes2:
+                            for j in range(len(new_states[i])):
+                                if j == valor:
+                                    l.append(new_states[i][j])
+                            aux[i] = l
+                print(aux)
+                pot = 0
+                i = 0
+                for estado in iState:
+                    if estado == 1:
+                        pot += sub_menu_2.pot(i)
+                    i+=1
+def trabajar_sistema(dic1, dic2):
+    global probabilities
+    global matrices
+    print(dic1,f'\n{dic2}')
     string = st.text_input("Introduce el sistema a trabajar:")
     execution_time = 0
     if st.button("Empezar"):
-        min = -1
-        fu_states, pr_states, iState = parse_input_string(string)
-        print(iState)
-        combinations = generate_combinations(fu_states, pr_states)
-        futuros, presentes = matriz_sistema_original(fu_states, pr_states)
-        print(futuros, presentes, f'\n{combinations}')
-        print(matriz_original())
-        # Recorrer cada elemento de la lista
-        for elemento in combinations:
-            presente, futuro = elemento
-            valor1=[]
-            # Validar si el presente elemento es ()
-            if futuro == () and len(presente) == 1:
-                print(elemento)
-                letra = presente[0]
-                indice = presentes[letra]
-                for i in range(len(matrices)):
-                    if i == indice:
-                        valores = [0,0]
-                        for matriz in matrices[i]:
-                            valores[1] += matriz[len(matriz)-1]
-                        valores[1] = valores[1] / len(matrices[i])
-                        valores[0] = 1 - valores[1]
-                        valor1 = valores
-                        print(valores, 'valores')
-
-                complemento = combinations[int(len(combinations)-(indice+1))]
-                presentes2 = complemento[0]
-                futuros2 = complemento[1]
-                print(futuros2, presentes2)
-                
-            # Validar si el futuro elemento es ()
-            if presente == ():
-                print(f"El segundo elemento es vacío:")
-
-            if elemento == combinations[int(len(combinations)/2)]:
-                break
-        r = functionTensor([0.75,0.25],[0,0,1,0])
-        o=np.array([0,0,0,0,1,0,0,0], dtype=np.float64)
-        d=np.array([0,0,0.75,0,0,0,0.25,0], dtype=np.float64)
-        dm = create_distance_matrix(len(o)).astype(np.float64)
-        emd_value = emd(o, d, dm)
-        print(emd_value, 'emd')
-        print(r, 'tensor')
-        st.success(f"El tiempo de ejecución de branch_and_bound_example fue de {execution_time:.4f} segundos.")
+        empezar_trabajo(string, execution_time,dic1)
     else:
         crear_grafo()
 
@@ -301,8 +371,15 @@ def string_a_lista_de_listas(string):
 
     return lista
 
+def mostrar_tabla():
+    global probabilities
+    columns = [f'F{i}' for i in range(len(probabilities))]
+    index = [f'C{i}' for i in range(len(probabilities))]
+    matriz_redondeada = [[round(valor, 2) for valor in fila] for fila in probabilities]
+    df = pd.DataFrame(matriz_redondeada, columns=columns, index=index)
+    st.table(df.style.format("{:.2f}"))
 
-def mostrar_tabla(text, letra):
+def mostrar_tablas(text, letra):
     global matrices
     matriz = string_a_lista_de_listas(text)
     matrices.append(matriz)
@@ -341,7 +418,7 @@ def crear_dict_fu(fu_states):
 def crear_diccionarios(fu_states, pr_states):
     return crear_dict_pr(pr_states), crear_dict_fu(fu_states)
 
-def matriz_sistema_original(fu_states, pr_states):
+def sistema_original(fu_states, pr_states):
     fu, pr = crear_diccionarios(fu_states, pr_states)
     return pr, fu
 
@@ -349,8 +426,46 @@ def generate_remaining_states(combinations_list, complete_present_state, complet
     return [(tuple(sorted(set(complete_present_state) - set(present_state))), tuple(sorted(set(complete_future_state) - set(future_state))))
             for present_state, future_state in combinations_list]
 
+def binario_a_decimal(binario_reverso):
+    # Reversar la lista para que esté en el orden correcto
+    binario_correcto = binario_reverso[::-1]
 
+    # Convertir la lista binaria a una cadena
+    binario_str = ''.join(map(str, binario_correcto))
 
+    # Convertir la cadena binaria a un número decimal
+    decimal = int(binario_str, 2)
+
+    return decimal
+
+def matriz_sistema_original(estados,fu, pr, futuros, presentes):
+    global probabilities
+    matriz = []
+    for clave_fu, valor_fu in futuros.items():#{A:0,B:1...}
+        if clave_fu not in fu:#[A,C...]
+            for clave, valor in estados.items():#{0: [0,0,0]...}
+                pos = []
+                aux1 = []
+                aux2 = []
+                for i in range(len(valor)):#[0,0,0,0,0]
+                    if i != valor_fu:
+                        pos.append(valor[i])#[0,0,0,0]
+                        aux2.append(valor[i])
+                    else:
+                        aux2.append(1-valor[i])
+                    aux1 = valor[i]
+
+                y1 = binario_a_decimal(aux1)
+                y2 = binario_a_decimal(aux2)
+
+                suma = probabilities[clave][y1] + probabilities[clave][y2]
+
+                estado = []
+                for i in range(len(estados)/2):
+                    estado.append(0)
+                matriz.append(estado)
+
+                matriz[clave][binario_a_decimal(pos)] = suma
 def procesar_string(input_string):
     # Eliminar espacios y caracteres innecesarios
     input_string = input_string.strip("")

@@ -48,17 +48,52 @@ def strategy_1_menu():
              '\n[1, 0, 1, 0, 1],\n[0, 1, 1, 0, 1],\n[1, 1, 1, 1, 0],]')
     primera = 'A'
     cant = st.number_input('Ingrese la cantidad de nodos',  min_value=1, value=1)
+    dimension = pot(cant)
+    print(dimension)
     combinaciones = generate_binary_combinations(cant)
+    graph_probability.probabilities = crear_matriz_cero(dimension)
     graph_probability.states = combinaciones
     graph_probability.matrices = []
     for i in range(cant):
         text = st.text_input(f'Ingresar matriz para {primera}:')
         if text != '':
-            graph_probability.mostrar_tabla(text, primera)
+            graph_probability.mostrar_tablas(text, primera)
         primera = graph_probability.siguiente_letra_mayuscula(primera)
 
     if selected_option == 'Ingresar Sistema a Trabajar':
-        graph_probability.trabajar_sistema()
+        dic1, dic2 = llenar_unos()
+        graph_probability.trabajar_sistema(dic1, dic2)
+
+def validar_posicion(dic):
+    dic2 = {}
+    for clave, valor in dic.items():
+        new = 0
+        for i in range(len(valor)):
+            new += pot(i) * valor[i]
+            dic2[clave] = new
+    return dic2
+
+def llenar_unos():
+    matrices = graph_probability.matrices
+    probabilities = graph_probability.probabilities
+    dic = {}
+    for i in range(len(matrices)):
+        for j in range(len(matrices[i])):
+            dic[j] = []
+    for i in range(len(matrices)):
+        for j in range(len(matrices[i])):
+            dic[j].append(matrices[i][j][len(matrices[i][j])-1])
+    dic2 = validar_posicion(dic)
+    for clave, valor in dic.items():
+        probabilities[int(clave)][int(len(valor))] = 1
+    return dic, dic2
+
+def pot(n):
+    p = 1
+    while n != 0:
+        p *= 2
+        n -= 1
+    return p
 
 def generate_binary_combinations(n):
     """
